@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Parser\Parser.csproj" />
+    <ProjectReference Include="..\Phone\Phone.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
