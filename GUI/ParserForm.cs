@@ -47,22 +47,25 @@ namespace GUI
 
       using (var timer = new Timer { Interval = fps })
       {
-        timer.Tick += (_, __) => pictureBox.Refresh();
+        timer.Tick += (_, __) => 
+          pictureBox.Refresh();
         timer.Start();
 
-        await new AndroidParser(new InvertingTrackingBitmap
+        var parser = new AndroidParser(new InvertingTrackingBitmap
         {
           KeepCount = 5000,
           IAsyncBitmap = new DelayedBitmap
           {
             DelayInterval = fps,
-            DelayCount = 1000,
+            DelayCount = 100,
             IAsyncBitmap = new WrappingBitmap
             {
               Bitmap = image,
             },
           },
-        }, todo).Parse();
+        }, todo);
+        var st = await parser.Parse();
+        Console.Error.WriteLine(st);
         pictureBox.Refresh();
       }
     }

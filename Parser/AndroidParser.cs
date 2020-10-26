@@ -62,7 +62,7 @@ namespace Parser
 
     async Task<List<Rectangle>> ScanDigits(Point p, int rightEnd)
     {
-      var bwFinder = new Finder(new BWImage { IAsyncBitmap = image, tracker = image });
+      var bwFinder = new Finder(new BWImage { IAsyncBitmap = image });
 
       var ans = new List<Rectangle>();
       while (true)
@@ -77,16 +77,38 @@ namespace Parser
       return ans;
     }
 
+    void SaveToFile(Rectangle r) {
+      Bitmap cropped = new Bitmap(r.Width, r.Height);
+      using (Graphics g = Graphics.FromImage(cropped)) {
+        g.DrawImage(bitmap, 0, 0, r, GraphicsUnit.Pixel);
+        var path = @"img\" + Guid.NewGuid().ToString().Replace("-", "") + ".png";
+        cropped.Save(path);
+      }
+    }
+
+    double Score(float[,] expected, float[,] actual) {
+      throw new NotImplementedException();
+    }
+
     async Task<List<int>> ParseDigits(List<Rectangle> rects)
     {
       foreach (var r in rects)
       {
-        // Bitmap cropped = new Bitmap(r.Width, r.Height);
-        // using (Graphics g = Graphics.FromImage(cropped)) {
-        //   g.DrawImage(bitmap, 0, 0, r, GraphicsUnit.Pixel);
-        //   var path = @"img\" + Guid.NewGuid().ToString().Replace("-", "") + ".png";
-        //   cropped.Save(path);
-        // }
+        //SaveToFile(r);
+        var pixels = new float[r.Width, r.Height];
+        for (var y = 0; y < r.Height; ++y)
+        {
+          for (var x = 0; x < r.Width; ++x)
+          {
+            pixels[x, y] = (await image.GetPixel(new Point(x + r.Left, y + r.Top))).GetBrightness();
+          }
+
+          var scores = new Dictionary<char, double>();
+          var s = new KeyValuePair<int, int>(1, 3);
+          foreach (var (c, floats) in digitImgs) {
+            scores[c] = Score(floats, pixels);
+          }
+        }
       }
 
       return rects.Any() ? new List<int> { 1 } : new List<int>();
@@ -129,18 +151,19 @@ namespace Parser
       var p = new Point(image.Width - 1, image.Height / 2);
       p = await finder.FindColor(p, Color.Black, Dir.Left);
 
-      gridRect = await finder.FindBoundary(p);
+      using (new NoDelay(image)) {
+        gridRect = await finder.FindBoundary(p);
+      }
 
       await FindDim();
 
-      var top = ParseTop();
+      var top = await ParseTop();
 
       return "TODO";
     }
 
     sealed class BWImage : DelgatingAsyncBitmap
     {
-      public IAsyncBitmap tracker;
       public async override Task<Color> GetPixel(Point p)
       {
         if (p.X == Width - 1)
@@ -150,42 +173,43 @@ namespace Parser
         }
 
         var c = await base.GetPixel(p);
-        // await tracker.GetPixel(p);
         return c.GetBrightness() > 0.5 ? Color.White : Color.Black;
       }
     }
   }
 
-  // sealed class NoDelay : IDisposable
-  // {
-  //   IAsyncBitmap image;
-  //   public NoDelay(IAsyncBitmap image)
-  //   {
-  //     image.GetType().GetField(
-  //         "count",
-  //         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(image, int.MinValue);
+  sealed class NoDelay : IDisposable
+  {
+    IAsyncBitmap image;
+    object delay;
 
-  //     while (image.GetType().Name != "DelayedBitmap")
-  //     {
-  //       image = (IAsyncBitmap)image
-  //         .GetType()
-  //         .BaseType
-  //         .GetFields(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-  //         .First()
-  //         .GetValue(image);
-  //     }
-  //     image.GetType().GetField(
-  //         "count",
-  //         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(image, int.MinValue);
+    public NoDelay(IAsyncBitmap im)
+    {
+      while (im.GetType().Name != "DelayedBitmap")
+      {
+        im = (IAsyncBitmap)im
+          .GetType()
+          .BaseType
+          .GetFields(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+          .First()
+          .GetValue(im);
+      }
+      im.GetType().GetField(
+          "count",
+          System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance
+        ).SetValue(im, int.MinValue);
 
-  //     this.image = image;
-  //   }
+      image = im;
+      delay = im.GetType().GetProperty("DelayCount").GetValue(im);
+      im.GetType().GetProperty("DelayCount").SetValue(im, int.MaxValue / 2);
+    }
 
-  //   public void Dispose()
-  //   {
-  //     image.GetType().GetField(
-  //       "count",
-  //       System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(image, int.MaxValue / 2);
-  //   }
-  // }
+    public void Dispose()
+    {
+      image.GetType().GetField(
+        "count",
+        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(image, int.MaxValue / 2);
+      image.GetType().GetProperty("DelayCount").SetValue(image, delay);
+    }
+  }
 }
