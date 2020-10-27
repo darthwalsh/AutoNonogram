@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using ImageParse;
+using Solver;
 
 namespace Parser
 {
@@ -182,7 +183,7 @@ namespace Parser
       return clues;
     }
 
-    public async Task<string> Parse()
+    public async Task<Puzzle> Parse()
     {
       var p = new Point(image.Width - 1, image.Height / 2);
       p = await finder.FindColor(p, Color.Black, Dir.Left);
@@ -197,7 +198,11 @@ namespace Parser
       var top = await ParseTop();
       var left = await ParseLeft();
 
-      return "TODO";
+      return new Puzzle {
+        Dim = dim,
+        Vertical = top,
+        Horizontal = left,
+      };
     }
 
     sealed class BWImage : DelgatingAsyncBitmap

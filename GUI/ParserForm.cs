@@ -65,7 +65,6 @@ namespace GUI
           },
         }, todo);
         var st = await parser.Parse();
-        Console.Error.WriteLine(st);
         pictureBox.Refresh();
       }
     }

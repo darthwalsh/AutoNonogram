@@ -12,4 +12,8 @@
     <EmbeddedResource Include="img\*" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Solver\Solver.csproj" />
+  </ItemGroup>
+
 </Project>
