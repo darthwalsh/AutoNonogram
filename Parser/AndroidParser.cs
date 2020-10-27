@@ -9,27 +9,18 @@ namespace Parser
 {
   public class AndroidParser
   {
-    static Dictionary<char, float[,]> digitImgs;
+    static Dictionary<char, Bitmap> digitImgs;
 
     static AndroidParser()
     {
-      digitImgs = new Dictionary<char, float[,]>();
+      digitImgs = new Dictionary<char, Bitmap>();
       var assembly = System.Reflection.Assembly.GetExecutingAssembly();
       foreach (var name in assembly.GetManifestResourceNames())
       {
+        var rank = name.Replace("Parser.img.", "").Replace(".png", "").Single();
         using (var stream = assembly.GetManifestResourceStream(name))
-        using (var bitmap = new Bitmap(stream))
         {
-          var pixels = new float[bitmap.Width, bitmap.Height];
-          for (var y = 0; y < bitmap.Height; ++y)
-          {
-            for (var x = 0; x < bitmap.Width; ++x)
-            {
-              pixels[x, y] = bitmap.GetPixel(x, y).GetBrightness();
-            }
-          }
-          var rank = name.Replace("Parser.img.", "").Replace(".png", "").Single();
-          digitImgs[rank] = pixels;
+          digitImgs[rank] = new Bitmap(stream);
         }
       }
     }
@@ -77,41 +68,53 @@ namespace Parser
       return ans;
     }
 
-    void SaveToFile(Rectangle r) {
+    void SaveToFile(Rectangle r)
+    {
       Bitmap cropped = new Bitmap(r.Width, r.Height);
-      using (Graphics g = Graphics.FromImage(cropped)) {
+      using (Graphics g = Graphics.FromImage(cropped))
+      {
         g.DrawImage(bitmap, 0, 0, r, GraphicsUnit.Pixel);
         var path = @"img\" + Guid.NewGuid().ToString().Replace("-", "") + ".png";
         cropped.Save(path);
       }
     }
 
-    double Score(float[,] expected, float[,] actual) {
-      throw new NotImplementedException();
+    public static double Score(Bitmap expected, Bitmap actual)
+    {
+      if (expected.Width != actual.Width || expected.Height != actual.Height) {
+        throw new ArgumentException();
+      }
+
+      double diff = 0;
+      for (var y = 0; y < expected.Height; ++y) {
+        for (var x = 0; x < expected.Width; ++x) {
+          diff += Math.Abs(expected.GetPixel(x, y).GetBrightness() - actual.GetPixel(x, y).GetBrightness());
+        }
+      }
+      return diff;
     }
 
     async Task<List<int>> ParseDigits(List<Rectangle> rects)
     {
+      var s = "";
       foreach (var r in rects)
       {
         //SaveToFile(r);
-        var pixels = new float[r.Width, r.Height];
-        for (var y = 0; y < r.Height; ++y)
-        {
-          for (var x = 0; x < r.Width; ++x)
-          {
-            pixels[x, y] = (await image.GetPixel(new Point(x + r.Left, y + r.Top))).GetBrightness();
-          }
+        var size = digitImgs.Values.First();
 
-          var scores = new Dictionary<char, double>();
-          var s = new KeyValuePair<int, int>(1, 3);
-          foreach (var (c, floats) in digitImgs) {
-            scores[c] = Score(floats, pixels);
+        var scores = new Dictionary<char, double>();
+        using (var cropped = bitmap.Clone(r, System.Drawing.Imaging.PixelFormat.DontCare))
+        using (var resized = new Bitmap(cropped, size.Width, size.Height)) {
+          foreach (var (c, golden) in digitImgs)
+          {
+            scores[c] = Score(golden, resized);
           }
         }
+
+        s += scores.OrderBy(kvp => kvp.Value).First().Key;
       }
 
-      return rects.Any() ? new List<int> { 1 } : new List<int>();
+      return rects.Any() ? new List<int> { int.Parse(s) } : new List<int>();
     }
 
     async Task<List<List<int>>> ParseTop()
@@ -140,7 +143,10 @@ namespace Parser
           clueP.Y = (int)(rects.First().Middle().Y - 0.7 * cellDim);
         }
 
+        col.Reverse();
         topClues.Add(col);
+
+        Console.Error.WriteLine(string.Join(", ", col));
       }
 
       return topClues;
@@ -151,7 +157,8 @@ namespace Parser
       var p = new Point(image.Width - 1, image.Height / 2);
       p = await finder.FindColor(p, Color.Black, Dir.Left);
 
-      using (new NoDelay(image)) {
+      using (new NoDelay(image))
+      {
         gridRect = await finder.FindBoundary(p);
       }
 
