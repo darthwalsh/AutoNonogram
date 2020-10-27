@@ -3,6 +3,8 @@
     "Argb",
     "imgs",
     "rects"
-  ]
+  ],
+
+   "dotnet-test-explorer.testProjectPath": "**/*Tests.csproj"
 
 }
