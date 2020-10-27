@@ -53,11 +53,11 @@ namespace GUI
 
         var parser = new AndroidParser(new InvertingTrackingBitmap
         {
-          KeepCount = 5000,
+          KeepCount = 2000,
           IAsyncBitmap = new DelayedBitmap
           {
             DelayInterval = fps,
-            DelayCount = 100,
+            DelayCount = 200,
             IAsyncBitmap = new WrappingBitmap
             {
               Bitmap = image,

@@ -94,7 +94,7 @@ namespace Parser
       return diff;
     }
 
-    async Task<List<int>> ParseDigits(List<Rectangle> rects)
+    int ParseDigits(List<Rectangle> rects)
     {
       var s = "";
       foreach (var r in rects)
@@ -114,12 +114,12 @@ namespace Parser
         s += scores.OrderBy(kvp => kvp.Value).First().Key;
       }
 
-      return rects.Any() ? new List<int> { int.Parse(s) } : new List<int>();
+      return int.Parse(s);
     }
 
     async Task<List<List<int>>> ParseTop()
     {
-      List<List<int>> topClues = new List<List<int>>();
+      List<List<int>> clues = new List<List<int>>();
       double cellDim = ((double)gridRect.Width) / dim;
 
       var p = gridRect.TopLeft().Up();
@@ -138,18 +138,48 @@ namespace Parser
         {
           var rects = await ScanDigits(clueP, clueR.X);
           if (rects.Count == 0) break;
-          var parsed = await ParseDigits(rects);
-          col.Add(parsed.Single());
-          clueP.Y = (int)(rects.First().Middle().Y - 0.7 * cellDim);
+          col.Add(ParseDigits(rects));
+          clueP.Y = rects.First().Middle().Y - 2 * rects.First().Height;
         }
 
         col.Reverse();
-        topClues.Add(col);
+        clues.Add(col);
 
-        Console.Error.WriteLine(string.Join(", ", col));
+        Console.Error.WriteLine(string.Join(" ", col));
       }
 
-      return topClues;
+      return clues;
+    }
+
+    async Task<List<List<int>>> ParseLeft()
+    {
+      List<List<int>> clues = new List<List<int>>();
+      double cellDim = ((double)gridRect.Width) / dim;
+      var gapSize = cellDim / 5.8;
+      Console.Error.WriteLine("cellDim: " + cellDim);
+
+      for (var y = 0; y < dim; ++y)
+      {
+        var p = new Point(0, gridRect.Top + (int)((y + 0.5) * cellDim));
+
+        var prevRight = 0;
+        var splitByGaps = new List<List<Rectangle>>();
+        List<Rectangle> currList = null;
+        foreach (var r in await ScanDigits(p, gridRect.Left - 1)) {
+          if (r.Left - prevRight > gapSize) {
+            currList = new List<Rectangle>();
+            splitByGaps.Add(currList);
+          }
+          prevRight = r.Right;
+          currList.Add(r);
+        }
+
+        clues.Add(splitByGaps.Select(ParseDigits).ToList());
+
+        Console.Error.WriteLine(string.Join(" ", clues.Last()));
+      }
+
+      return clues;
     }
 
     public async Task<string> Parse()
@@ -165,6 +195,7 @@ namespace Parser
       await FindDim();
 
       var top = await ParseTop();
+      var left = await ParseLeft();
 
       return "TODO";
     }
