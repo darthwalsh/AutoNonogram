@@ -6,6 +6,7 @@ using System.Windows.Forms;
 using ImageParse;
 using Parser;
 using Phone;
+using Solver;
 
 namespace GUI
 {
@@ -25,9 +26,14 @@ namespace GUI
 
       var pngPath = Path.Combine(Application.StartupPath, "screen.png");
       Bitmap image;
-      if (File.Exists(pngPath)) {
+      var mockPhone = false;
+      // var mockPhone = File.Exists(pngPath);
+      if (mockPhone)
+      {
         image = new Bitmap(pngPath);
-      } else {
+      }
+      else
+      {
         var screen = Adb.Screenshot();
         File.WriteAllBytes(pngPath, screen.GetBuffer());
         image = new Bitmap(screen);
@@ -35,7 +41,7 @@ namespace GUI
 
       var tallest = Screen.AllScreens.OrderByDescending(s => s.WorkingArea.Height).First();
       Location = tallest.WorkingArea.Location;
-      
+
       pictureBox.Image = image;
       pictureBox.Height = tallest.WorkingArea.Height;
       pictureBox.Width = image.Width;
@@ -47,7 +53,7 @@ namespace GUI
 
       using (var timer = new Timer { Interval = fps })
       {
-        timer.Tick += (_, __) => 
+        timer.Tick += (_, __) =>
           pictureBox.Refresh();
         timer.Start();
 
@@ -64,8 +70,31 @@ namespace GUI
             },
           },
         }, todo);
-        var st = await parser.Parse();
+        var puzzle = await parser.Parse();
         pictureBox.Refresh();
+
+        var solvedRows = new Logic(puzzle).Solve();
+        Console.Error.WriteLine();
+        Console.Error.WriteLine(
+          string.Join('\n',
+          solvedRows.Select(row => string.Join("", row))
+        ));
+
+        foreach (var (cx, cy) in solvedRows.SelectMany((row, y) => row
+          .Select((c, x) => (c, x))
+          .Where(o => o.c.IsBlack)
+          .Select(o => (o.x, y))))
+        {
+          var p = parser.getCell(cx, cy);
+          if (mockPhone)
+          {
+            await parser.Pulse(p);
+          }
+          else
+          {
+            Adb.Tap(p.X, p.Y);
+          }
+        }
       }
     }
   }

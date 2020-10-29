@@ -20,6 +20,10 @@ namespace Solver
 
     public bool? filled;
 
+    public bool IsWhite=> filled == false;
+    public bool IsBlack=> filled == true;
+    public bool IsUnknown=> !filled.HasValue;
+
     public override string ToString()
     {
       return names.First(o => o.v == filled).c.ToString();

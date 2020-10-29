@@ -49,13 +49,7 @@ namespace Tests
     static string Run(List<int> clues, string existing)
     {
       var cells = existing.Select(Cell.FromChar).ToList();
-
-      new Guesser
-      {
-        clues = clues,
-        cells = cells,
-      }.Solve();
-
+      new Guesser(clues, cells).Solve();
       return string.Join("", cells);
     }
   }

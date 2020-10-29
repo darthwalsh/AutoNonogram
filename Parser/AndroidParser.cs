@@ -30,6 +30,7 @@ namespace Parser
     Finder finder;
     Rectangle gridRect;
     int dim;
+    double cellDim;
 
     Bitmap bitmap; //TODO DELETE
 
@@ -49,6 +50,9 @@ namespace Parser
 
       var blockW = next5.X - gridTLw.X;
       dim = (int)Math.Round(5.0 * gridRect.Width / blockW);
+
+      cellDim = ((double)gridRect.Width) / dim;
+
       Console.Error.WriteLine("DIM: " + dim);
     }
 
@@ -67,17 +71,6 @@ namespace Parser
         p = rect.Right();
       }
       return ans;
-    }
-
-    void SaveToFile(Rectangle r)
-    {
-      Bitmap cropped = new Bitmap(r.Width, r.Height);
-      using (Graphics g = Graphics.FromImage(cropped))
-      {
-        g.DrawImage(bitmap, 0, 0, r, GraphicsUnit.Pixel);
-        var path = @"img\" + Guid.NewGuid().ToString().Replace("-", "") + ".png";
-        cropped.Save(path);
-      }
     }
 
     public static double Score(Bitmap expected, Bitmap actual)
@@ -121,7 +114,6 @@ namespace Parser
     async Task<List<List<int>>> ParseTop()
     {
       List<List<int>> clues = new List<List<int>>();
-      double cellDim = ((double)gridRect.Width) / dim;
 
       var p = gridRect.TopLeft().Up();
       p.X += (int)(cellDim / 2);
@@ -155,7 +147,6 @@ namespace Parser
     async Task<List<List<int>>> ParseLeft()
     {
       List<List<int>> clues = new List<List<int>>();
-      double cellDim = ((double)gridRect.Width) / dim;
       var gapSize = cellDim / 5.8;
       Console.Error.WriteLine("cellDim: " + cellDim);
 
@@ -188,21 +179,34 @@ namespace Parser
       var p = new Point(image.Width - 1, image.Height / 2);
       p = await finder.FindColor(p, Color.Black, Dir.Left);
 
-      using (new NoDelay(image))
+
+      List<List<int>> top, left;
+      using (var noDelay = new NoDelay(image))
       {
         gridRect = await finder.FindBoundary(p);
+        await FindDim();
+        top = await ParseTop();
+        left = await ParseLeft();
       }
-
-      await FindDim();
-
-      var top = await ParseTop();
-      var left = await ParseLeft();
 
       return new Puzzle {
         Dim = dim,
         Vertical = top,
         Horizontal = left,
       };
+    }
+
+    public Point getCell(int x, int y) {
+      if (gridRect == Rectangle.Empty) {
+        throw new InvalidOperationException();
+      }
+
+      var opp = gridRect.TopLeft();
+      // (0, 3) offset by cellDim * (1x, 7x)
+      opp.X += (int)(cellDim * (2 * x + 1));
+      opp.Y += (int)(cellDim * (2 * y + 1));
+
+      return gridRect.TopLeft().Average(opp);
     }
 
     sealed class BWImage : DelgatingAsyncBitmap
@@ -216,8 +220,43 @@ namespace Parser
         }
 
         var c = await base.GetPixel(p);
-        return c.GetBrightness() > 0.5 ? Color.White : Color.Black;
+        return c.GetBrightness() > 0.7 ? Color.White : Color.Black;
       }
+    }
+
+    public Task Pulse(Point p) {
+      return finder.Pulse(p);
+    }
+
+    void SaveToFile(Rectangle r)
+    {
+      Bitmap cropped = new Bitmap(r.Width, r.Height);
+      using (Graphics g = Graphics.FromImage(cropped))
+      {
+        g.DrawImage(bitmap, 0, 0, r, GraphicsUnit.Pixel);
+        var path = @"img\" + Guid.NewGuid().ToString().Replace("-", "") + ".png";
+        cropped.Save(path);
+      }
+    }
+
+    async void TestBWFilter(Rectangle rect)
+    {
+      // var rect = new Rectangle(507, 600, 60, 23);
+      SaveToFile(rect);
+      var bw = new BWImage { IAsyncBitmap = image };
+      for (int y = rect.Top; y < rect.Bottom; ++y)
+      {
+        var row = new List<float>();
+        for (int x = rect.Left; x < rect.Right; ++x)
+        {
+          row.Add(bitmap.GetPixel(x, y).GetBrightness());
+          bitmap.SetPixel(x, y, await bw.GetPixel(new Point(x, y)));
+        }
+        Console.Error.WriteLine(string.Join(' ', row.Select(f => f.ToString(".000"))));
+      }
+      SaveToFile(rect);
+
+      Console.Error.WriteLine("BITMAP HAS BEEN MUTATED!");
     }
   }
 

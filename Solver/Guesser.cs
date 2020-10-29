@@ -6,20 +6,27 @@ namespace Solver
 {
   public sealed class Guesser
   {
-    public List<int> clues;
-    List<int> blockPos;
-    public List<Cell> cells;
-    List<int> possCount;
-    int posses;
+    List<int> clues;
+    List<Cell> cells;
+
+    List<int> blockPositions;
+    List<int> counts;
+    int possibilities;
+
+    public Guesser(List<int> clues, List<Cell> cells)
+    {
+      this.clues = clues;
+      this.cells = cells;
+    }
 
     public void Solve()
     {
-      blockPos = clues.Select(c => 0).ToList();
-      possCount = Enumerable.Repeat(0, cells.Count).ToList();
-      posses = 0;
+      blockPositions = clues.Select(_ => 0).ToList();
+      counts = cells.Select(_ => 0).ToList();
+      possibilities = 0;
       Solve(0, 0);
 
-      if (posses == 0)
+      if (possibilities == 0)
       {
         throw new InvalidOperationException();
       }
@@ -27,12 +34,12 @@ namespace Solver
       for (var i = 0; i < cells.Count; ++i)
       {
         var cell = cells[i];
-        if (!IsUnknown(cell)) continue;
-        if (possCount[i] == 0)
+        if (!cell.IsUnknown) continue;
+        if (counts[i] == 0)
         {
           cell.filled = false;
         }
-        else if (possCount[i] == posses)
+        else if (counts[i] == possibilities)
         {
           cell.filled = true;
         }
@@ -45,12 +52,12 @@ namespace Solver
       {
         if (cells.Skip(cellI).All(CanBeWhite))
         {
-          ++posses;
-          foreach (var (c, start) in clues.Zip(blockPos, (c, b) => (c, b)))
+          ++possibilities;
+          foreach (var (clu, pos) in clues.Zip(blockPositions, (c, b) => (c, b)))
           {
-            for (var i = 0; i < c; ++i)
+            for (var i = 0; i < clu; ++i)
             {
-              ++possCount[i + start];
+              ++counts[i + pos];
             }
           }
         }
@@ -66,16 +73,14 @@ namespace Solver
             cells.Skip(cellI + start).Take(clue).All(CanBeBlack) &&
             (end == cells.Count || CanBeWhite(cells[end])))
         {
-          blockPos[clueI] = start + cellI;
+          blockPositions[clueI] = start + cellI;
           Solve(clueI + 1, end + 1);
         }
       }
     }
 
-    public static bool IsWhite(Cell c) => c.filled == false;
-    public static bool IsBlack(Cell c) => c.filled == true;
-    public static bool IsUnknown(Cell c) => !c.filled.HasValue;
-    public static bool CanBeWhite(Cell c) => !IsBlack(c);
-    public static bool CanBeBlack(Cell c) => !IsWhite(c);
+
+    static bool CanBeWhite(Cell c) => !c.IsBlack;
+    static bool CanBeBlack(Cell c) => !c.IsWhite;
   }
 }
