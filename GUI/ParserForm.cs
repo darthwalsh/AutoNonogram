@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -73,6 +74,8 @@ namespace GUI
         var puzzle = await parser.Parse();
         pictureBox.Refresh();
 
+        var sw = Stopwatch.StartNew();
+
         var solvedRows = new Logic(puzzle).Solve();
         Console.Error.WriteLine();
         Console.Error.WriteLine(
@@ -80,21 +83,40 @@ namespace GUI
           solvedRows.Select(row => string.Join("", row))
         ));
 
-        foreach (var (cx, cy) in solvedRows.SelectMany((row, y) => row
+        Console.Error.WriteLine($"Solve time: {sw.ElapsedMilliseconds}ms");
+        sw.Restart();
+
+        var toFill = solvedRows.SelectMany((row, y) => row
           .Select((c, x) => (c, x))
           .Where(o => o.c.IsBlack)
-          .Select(o => (o.x, y))))
+          .Select(o => parser.getCell(o.x, y)));
+
+        if (mockPhone)
         {
-          var p = parser.getCell(cx, cy);
-          if (mockPhone)
+          foreach (var p in toFill)
           {
             await parser.Pulse(p);
           }
+        }
+        else
+        {
+          var useMonkey = true;
+          if (useMonkey)
+          {
+            using (var tapper = new Tapper()) {
+              tapper.Tap(toFill.Select(p => (p.X, p.Y)));
+            }
+          }
           else
           {
-            Adb.Tap(p.X, p.Y);
+            foreach (var p in toFill)
+            {
+              Adb.Tap(p.X, p.Y);
+            }
           }
         }
+
+        Console.Error.WriteLine($"Tapping time:  {sw.ElapsedMilliseconds}ms");
       }
     }
   }
