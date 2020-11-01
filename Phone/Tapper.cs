@@ -28,8 +28,8 @@ namespace Phone
 
     public void Dispose()
     {
-      // TODO doesn't work to actually kill java process
-      // process?.Kill();
+      // Only kills the CMD window and not the script, but tapper.py will quit itself after inactivity
+      process?.Kill();
     }
 
     public void Tap(IEnumerable<(int x, int y)> points)
