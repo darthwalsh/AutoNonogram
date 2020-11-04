@@ -5,21 +5,26 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (console)",
+      "name": "debug ANG",
       "type": "coreclr",
       "request": "launch",
-      "preLaunchTask": "build",
+      "preLaunchTask": "buildANG",
+      "program": "${workspaceFolder}/ANG/bin/Debug/netcoreapp3.1/ANG.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/ANG",
+      "stopAtEntry": false,
+      "console": "externalTerminal"
+    },
+    {
+      "name": "debug GUI",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "buildGUI",
       "program": "${workspaceFolder}/GUI/bin/Debug/netcoreapp3.1/GUI.dll",
       "args": [],
       "cwd": "${workspaceFolder}/GUI",
       "console": "internalConsole",
       "stopAtEntry": false
-    },
-    {
-      "name": ".NET Core Attach",
-      "type": "coreclr",
-      "request": "attach",
-      "processId": "${command:pickProcess}"
     }
   ]
 }

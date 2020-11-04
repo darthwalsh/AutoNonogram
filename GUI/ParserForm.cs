@@ -74,6 +74,16 @@ namespace GUI
         var puzzle = await parser.Parse();
         pictureBox.Refresh();
 
+        foreach (var clue in puzzle.Vertical) {
+          Console.Error.WriteLine(string.Join(" ", clue));
+        }
+        Console.Error.WriteLine();
+        foreach (var clue in puzzle.Horizontal)
+        {
+          Console.Error.WriteLine(string.Join(" ", clue));
+        }
+        Console.Error.WriteLine();
+
         var sw = Stopwatch.StartNew();
 
         var solvedRows = new Logic(puzzle).Solve();

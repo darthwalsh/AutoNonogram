@@ -34,6 +34,13 @@ namespace Parser
 
     Bitmap bitmap; //TODO DELETE
 
+    public AndroidParser(Bitmap bitmap) :
+     this(new WrappingBitmap
+     {
+       Bitmap = bitmap,
+     }, bitmap)
+    { }
+
     public AndroidParser(IAsyncBitmap image, Bitmap bitmap)
     {
       this.image = image;
@@ -52,8 +59,6 @@ namespace Parser
       dim = (int)Math.Round(5.0 * gridRect.Width / blockW);
 
       cellDim = ((double)gridRect.Width) / dim;
-
-      Console.Error.WriteLine("DIM: " + dim);
     }
 
     async Task<List<Rectangle>> ScanDigits(Point p, int rightEnd)
@@ -75,13 +80,16 @@ namespace Parser
 
     public static double Score(Bitmap expected, Bitmap actual)
     {
-      if (expected.Width != actual.Width || expected.Height != actual.Height) {
+      if (expected.Width != actual.Width || expected.Height != actual.Height)
+      {
         throw new ArgumentException();
       }
 
       double diff = 0;
-      for (var y = 0; y < expected.Height; ++y) {
-        for (var x = 0; x < expected.Width; ++x) {
+      for (var y = 0; y < expected.Height; ++y)
+      {
+        for (var x = 0; x < expected.Width; ++x)
+        {
           diff += Math.Abs(expected.GetPixel(x, y).GetBrightness() - actual.GetPixel(x, y).GetBrightness());
         }
       }
@@ -98,7 +106,8 @@ namespace Parser
 
         var scores = new Dictionary<char, double>();
         using (var cropped = bitmap.Clone(r, System.Drawing.Imaging.PixelFormat.DontCare))
-        using (var resized = new Bitmap(cropped, size.Width, size.Height)) {
+        using (var resized = new Bitmap(cropped, size.Width, size.Height))
+        {
           foreach (var (c, golden) in digitImgs)
           {
             scores[c] = Score(golden, resized);
@@ -137,8 +146,6 @@ namespace Parser
 
         col.Reverse();
         clues.Add(col);
-
-        Console.Error.WriteLine(string.Join(" ", col));
       }
 
       return clues;
@@ -147,8 +154,6 @@ namespace Parser
     async Task<List<List<int>>> ParseLeft()
     {
       List<List<int>> clues = new List<List<int>>();
-      var gapSize = cellDim / 5.8;
-      Console.Error.WriteLine("cellDim: " + cellDim);
 
       for (var y = 0; y < dim; ++y)
       {
@@ -157,8 +162,11 @@ namespace Parser
         var prevRight = 0;
         var splitByGaps = new List<List<Rectangle>>();
         List<Rectangle> currList = null;
-        foreach (var r in await ScanDigits(p, gridRect.Left - 1)) {
-          if (r.Left - prevRight > gapSize) {
+        foreach (var r in await ScanDigits(p, gridRect.Left - 1))
+        {
+          var gapSize = r.Height / 2.1;
+          if (r.Left - prevRight > gapSize)
+          {
             currList = new List<Rectangle>();
             splitByGaps.Add(currList);
           }
@@ -167,8 +175,6 @@ namespace Parser
         }
 
         clues.Add(splitByGaps.Select(ParseDigits).ToList());
-
-        Console.Error.WriteLine(string.Join(" ", clues.Last()));
       }
 
       return clues;
@@ -189,15 +195,18 @@ namespace Parser
         left = await ParseLeft();
       }
 
-      return new Puzzle {
+      return new Puzzle
+      {
         Dim = dim,
         Vertical = top,
         Horizontal = left,
       };
     }
 
-    public Point getCell(int x, int y) {
-      if (gridRect == Rectangle.Empty) {
+    public Point getCell(int x, int y)
+    {
+      if (gridRect == Rectangle.Empty)
+      {
         throw new InvalidOperationException();
       }
 
@@ -224,7 +233,8 @@ namespace Parser
       }
     }
 
-    public Task Pulse(Point p) {
+    public Task Pulse(Point p)
+    {
       return finder.Pulse(p);
     }
 
@@ -267,6 +277,10 @@ namespace Parser
 
     public NoDelay(IAsyncBitmap im)
     {
+      if (im.GetType().Name == "WrappingBitmap") {
+        return;
+      }
+
       while (im.GetType().Name != "DelayedBitmap")
       {
         im = (IAsyncBitmap)im
@@ -288,6 +302,8 @@ namespace Parser
 
     public void Dispose()
     {
+      if (image == null) return;
+
       image.GetType().GetField(
         "count",
         System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(image, int.MaxValue / 2);
