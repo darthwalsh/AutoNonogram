@@ -27,6 +27,14 @@ namespace ANG
         
         var solvedRows = new Logic(puzzle).Solve();
         Console.Error.WriteLine($"Solving    took {sw.ElapsedMilliseconds}ms");
+        // System.IO.File.WriteAllLines(
+        //   @"C:\code\test\DragNonogram\" + Guid.NewGuid().ToString().Replace("-", "") + ".txt",
+
+        //   new[] { puzzle.Dim.ToString() }
+        //     .Concat(puzzle.Vertical.Select(col => string.Join(" ", col)))
+        //     .Concat(puzzle.Horizontal.Select(row => string.Join(" ", row)))
+        //     .Concat(solvedRows.Select(row => string.Concat(row).Replace(" ", ".")))
+        // );
         sw.Restart();
 
         var toFill = solvedRows.SelectMany((row, y) => row

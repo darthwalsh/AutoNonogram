@@ -38,7 +38,7 @@ class StopThread(Thread):
   def run(self):
     while True:
       time_since = current_time_ms() - last_used
-      if time_since > 30000:
+      if time_since > 90000:
         print 'timed out, EXITING!'
         time.sleep(1)
         os._exit()
